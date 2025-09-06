@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2021 by anonymous (http://jsbin.com/kasurelosa/1/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html> 
+ <head>
+    <meta name="description" content="A game where the character runs from the mouse"/>
+    <title>The Mouse of Terror</title> 
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        line-height: 0;
+        border-width: 0;
+        border: none;
+        overflow: hidden;
+      }
+    </style>
+</head>
+ <body>
+    <canvas id="mycanvas"></canvas> 
+ </body>
+ <script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"></script> 
+ 
+ <script>
+    var sketchProc = function(processingInstance) {
+     with (processingInstance) {
+        
+frameRate(60);
+  
+        
+var mouseBeingPressed, change = false;
+var grounds, menu, hero, buttons;
+var draw, mouseOut, mousePressed, mouseReleased, mouseClicked;
+
+textAlign(CENTER, CENTER);
+
+
+var changeToTitleScreen = function() {
+  
+    
+    mouseOut = function() {};
+    mousePressed = function() {};
+    mouseReleased = function() {};
+    
+    
+    buttons.delay = 5;
+    
+    menu.highScore = max(menu.score, menu.highScore);
+    
+    
+    mouseClicked = function() {
+        buttons.click();
+    };
+    
+
+    draw = function() {
+        background(247, 234, 220);
+        
+        
+        
+        textAlign(CENTER, CENTER);
+        
+        
+        
+        buttons.run();
+        
+        textSize(min(width, height) / 10);
+        text("Chase the Mouse", width / 2, height / 8);
+        
+        
+        
+        textAlign(RIGHT, CENTER);
+        
+        
+        textSize(min(width, height) / 20);
+        text("score:", width * 3 / 8, height * 3 / 8);
+        text("high score:", width * 3 / 8, height / 2);
+        
+        
+        textAlign(LEFT, CENTER);
+        
+      
+        
+        textSize(min(width, height) * 7 / 80);
+        text(menu.score, width * 5 / 8, height * 3 / 8);
+        text(menu.highScore, width * 5 / 8, height / 2);
+        
+        
+        
+        if (buttons.delay > 0) {
+            buttons.delay--;
+        }
+    };
+};
+
+var changeToHowToPlayScreen = function() {
+    buttons.delay = 30;
+    textAlign(CENTER, TOP);
+    
+    mouseClicked = function() {
+        if (buttons.delay <= 0) {
+            changeToTitleScreen();
+        }
+    };
+    
+    draw = function() {
+        background(255, 255, 255);
+        fill(0, 0, 0);
+        textSize(min(width, height) / 10);
+        text("Chase the Mouse", width / 2, height / 20);
+        textSize(min(width, height) / 20);
+        
+        
+        text("The hero follows the mouse, and jumps when you click. If you fall into one of the holes you lose, the farther you make the higher your score!", width * 1 / 40, height / 4, width * 19 / 20, height * 3 / 4);
+        text("Click anywhere to return to the title screen.", width / 2, height * 15 / 16);
+        if (buttons.delay > 0) {
+            buttons.delay--;
+        }
+    };
+};
+
+var changeToGameScreen = function() {
+    mouseClicked = function(){};
+    
+    fill(255, 255, 255);
+    
+    menu.score = 0;
+    
+    textAlign(LEFT, TOP);
+    textSize(width / 20);
+    
+    
+    grounds.intialize();
+    hero.intialize();
+    
+    grounds.scrollSpeed = 2;
+    
+    
+    mouseOut = function() {
+        mouseBeingPressed = false;
+    };
+    
+    mousePressed = function() {
+        mouseBeingPressed = true;
+    };
+    
+    mouseReleased = function() {
+        mouseBeingPressed = false;
+    };
+    
+    draw = function() {
+        background(247, 234, 220);
+        grounds.move();
+        
+        
+        fill(menu.color);
+        
+        textSize(height / 30);
+      
+        text("high score : " + menu.highScore, width / 40, height / 40);
+        text("score : " + menu.score, width / 40, height * 3 / 40);
+        
+        fill(255, 255, 255);
+        
+        hero.move();
+        grounds.drawAndCollision();
+        hero.draw();
+        
+        if (menu.colorCounter > 0) {
+            menu.colorCounter--;
+            if (ceil(menu.colorCounter / 10) % 2 === 0) {
+                menu.color = color(0, 0, 0);
+            } else {
+                menu.color = color(255, 0, 0);
+            }
+        }
+    };
+};
+
+
+var Ground = function(config) {
+    this.x = config.x;
+    this.y = config.y;
+    this.width = config.width;
+};
+
+grounds = {
+    intialize : function() {
+        this.array = [new Ground({
+            'x' : -20, 
+            'y' : 309,
+            'width' : 181
+        })];
+        this.scrollSpeed = 1;
+        this.offset = 12;
+        this.distToNext = 100;
+    },
+    generateNewGround : function(l) {
+        var farEdge = this.array[l].x + this.array[l].width + this.offset;
+        if (farEdge < width - this.distToNext) {
+            this.array.push(new Ground({
+                'x' : farEdge + this.distToNext,
+                'y' : random(height / 2 - 50, height / 2 + 50),
+                'width' : random(50, 150),
+            }));
+            this.distToNext = random(90, 110 + menu.score);
+            this.generateNewGround(l + 1);
+        }
+    },
+    move : function() {
+        var l = this.array.length - 1;
+        this.generateNewGround(l);
+        
+        for (var i = l; i > -1; i--) {
+            var ground = this.array[i];
+            
+            ground.x -= grounds.scrollSpeed;
+            
+            if (ground.x + ground.width + grounds.offset < 0) {
+                grounds.array.splice(i, 1);
+                menu.score++;
+                
+
+                if (menu.score % 5 === 0) {
+                    grounds.scrollSpeed++;
+                    menu.colorCounter = 30;
+                    menu.color = color(255, 0, 0);
+                }
+            }
+        }
+    },
+    drawAndCollision : function() {
+        var l = this.array.length - 1;
+        for(var i = l; i > -1; i--) {
+            var ground = this.array[i];
+            var heroW = hero.position.x;
+            var heroE = heroW + hero.width;
+            var heroS = hero.position.y;
+            var heroN = hero.position.y - hero.height;
+            var heroVX = hero.velocity.x;
+            var heroVY = hero.velocity.y;
+            var groundW = ground.x;
+            var groundN = ground.y;
+            var groundE = groundW + ground.width;
+            
+            
+            if(heroE > groundW && heroW < groundE && heroS > groundN) {
+                if(heroS <= groundN + heroVY) {
+                    hero.position.y = groundN;
+                    hero.velocity.y = 0;
+                    hero.grounded = true;
+                } else if (heroE <= groundW + ceil(heroVX) + grounds.scrollSpeed) {
+                    hero.position.x = groundW - hero.width;
+                    hero.velocity.x = 0;
+                } else if (heroW >= groundE - ceil(heroVX) - grounds.scrollSpeed) {
+                    hero.position.x = groundE;
+                    hero.velocity.x = 0;
+                } else {
+                    hero.grounded = true;
+                }
+            }
+            
+            var d = grounds.offset;
+            var w = ground.x + d;
+            var h = height - ground.y;
+            var n = ground.y - d;
+            var s = ground.y + d;
+            var e = ground.x - d;
+            
+            rect(e, n, d * 2, h + d);
+            rect(w, s, ground.width, h - d);
+            quad(e, n, e + ground.width, n, w + ground.width, s, w, s);
+        }
+    },
+};
+
+
+
+
+
+var hero = { 
+    intialize : function() {
+        this.position = new PVector(30, 300);
+        this.velocity = new PVector(0, 0);
+        this.acceleration = new PVector(0, 0);
+        this.width = 18;
+        this.height = 50;
+        this.legCounter = 1;
+        this.legState = 2;
+        this.grounded = false;
+    },
+    'move' : function() {
+        
+        if (this.grounded && mouseBeingPressed) {
+            this.grounded = false;
+            this.acceleration.y -= 7;
+        }
+        
+        
+        this.acceleration.y += 0.2;
+        
+        
+        if (mouseX >= this.position.x + (this.width / 2)) {
+            this.acceleration.x += 0.2;
+        } else if (mouseX < this.position.x + (this.width / 2)) {
+            this.acceleration.x -= 0.2;
+        }
+        
+        this.velocity.add(this.acceleration);
+        
+        this.velocity.x = constrain(this.velocity.x, -2, 2);
+        this.velocity.y = constrain(this.velocity.y, -12, 20);
+        
+        this.position.add(this.velocity);
+        
+        if(this.position.x < 0) {
+            this.position.x = 0;
+        } else if (this.position.x + this.width > width) {
+            this.position.x = width - this.width;
+        }
+        
+        this.acceleration.mult(0);
+        
+        
+        
+        if (this.position.y - this.height > height) {
+            changeToTitleScreen();
+        }
+        
+        this.grounded = false;
+        
+        
+    },
+    'draw' : function() {
+        var headDiameter = this.width * (2 / 3);
+        var headX = this.position.x + this.width / 2;
+        var headY = this.position.y - this.height + headDiameter / 2;
+        ellipse(headX, headY, headDiameter, headDiameter);
+        var rectX = this.position.x + this.width / 10;
+        var rectY = this.position.y - this.height + headDiameter;
+        var rectHeight = this.height / 2;
+        var rectWidth = this.width * (4 / 5);
+        rect(rectX, rectY, rectWidth, rectHeight);
+        line(
+            rectX,
+            rectY + rectHeight,
+            rectX,
+            this.position.y - this.legState
+        );
+        line(
+            rectX + rectWidth,
+            rectY + rectHeight,
+            rectX + rectWidth,
+            this.position.y + this.legState
+        );
+        line(this.position.x, rectY, this.position.x, rectY + rectHeight);
+        line(
+            this.position.x + this.width,
+            rectY,
+            this.position.x + this.width,
+            rectY + rectHeight
+        );
+        this.legCounter++;
+        if (this.legCounter > 15) {
+            this.legCounter = 0;
+            this.legState *= -1;
+        }
+    },
+};
+
+
+var Button = function(config) {
+    this.x = config.x;
+    this.y = config.y;
+    this.width = config.width;
+    this.height = config.height;
+    this.thisColor = config.thisColor;
+    this.text = config.text;
+    this.textSize = config.textSize;
+    this.thisClicked = config.thisClicked;
+};
+
+
+buttons = {
+    'array' : [new Button({
+            'x': function() {return width * 1 / 2;},            
+            'y': function() {return height * 4 / 5;},
+            'width': function() {return width * 9 / 20;},
+            'height': function() {return height * 11 / 80;},
+            'thisColor': color(194, 72, 72),
+            'text': "Play",
+            'textSize': function() {return min(width, height) * 1 / 8;},
+            'thisClicked': function() {
+                changeToGameScreen();
+            }
+        }),
+        new Button({
+            'x' : function() {return width * 1 / 2;},
+            'y' : function() {return height * 11 / 16;},
+            'width' : function() {return width * 2 / 5;},
+            'height' : function() {return height * 3 / 50;},
+            'thisColor' : color(242, 104, 104),
+            'text' : "how to play",
+            'textSize' : function() {return min(width, height) * 1 / 20;},
+            'thisClicked' : function() {
+                changeToHowToPlayScreen();
+            }
+        })],
+        'delay' : 30,
+        'run' : function() {
+            rectMode(CENTER);
+            
+            var increment = this.delay > 0;
+            for(var i = 0; i < this.array.length; i++) {
+                var button = this.array[i];
+                
+               
+                fill(button.thisColor);
+                rect(button.x(), button.y(), button.width(), button.height(), 1 / 80 * min(width, height));
+                textSize(button.textSize());
+                fill(0, 0, 0);
+                text(button.text, button.x(), button.y());
+            }
+            if (increment) {
+                this.delay--;
+            }
+            
+            rectMode(CORNER);
+        },
+        'click' : function () {
+            var clickable = this.delay <= 0;
+            for (var i = 0; i < this.array.length; i++) {
+                var button = this.array[i];
+                
+                var hBW = button.width() / 2;         //halfButtonWidth
+                var hBH = button.height() / 2;        //halfButtonHeight
+                
+                
+                
+                if (clickable && mouseX >= button.x() - hBW && mouseX <= button.x() + hBW && mouseY >= button.y() - hBH && mouseY <= button.y() + hBH) {
+                    button.thisClicked();
+                }
+            }
+        },
+};
+
+
+menu = {
+    score : 0,
+    highScore : 0,
+    color : color(0, 0, 0),
+    colorCounter : 0,
+};
+       
+
+       
+       
+       
+
+
+changeToTitleScreen();
+
+
+
+    }};
+
+    var canvas = document.getElementById("mycanvas"); 
+    var processingInstance = new Processing(canvas, sketchProc); 
+   
+    var resize = function() {
+        processingInstance.width = window.innerWidth;
+        processingInstance.height = window.innerHeight;
+        canvas.width = processingInstance.width;
+        canvas.height = processingInstance.height;
+    }
+    
+    window.addEventListener("resize", resize);
+    resize();
+
+ </script>
+
+</html>
